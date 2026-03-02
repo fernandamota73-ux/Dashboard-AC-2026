@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LNF 2026 – Dashboard Estratégico de Formação</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --primary: #1a3a5c;
+    --secondary: #2e7d9f;
+    --accent: #e8a020;
+    --accent2: #27ae60;
+    --danger: #c0392b;
+    --light: #f0f4f8;
+    --white: #ffffff;
+    --gray: #6c757d;
+    --border: #dde3ea;
+    --shadow: 0 4px 20px rgba(26,58,92,0.10);
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #eef2f7; color: #222; min-height: 100vh; }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, #1a3a5c 0%, #2e7d9f 60%, #1e5b84 100%);
+    color: white; padding: 22px 32px 18px;
+    display: flex; align-items: center; justify-content: space-between;
+    box-shadow: 0 4px 16px rgba(26,58,92,0.25);
+  }
+  .header-left h1 { font-size: 1.7rem; font-weight: 700; letter-spacing: .5px; }
+  .header-left p { font-size: 0.93rem; opacity: .85; margin-top: 2px; }
+  .header-badge {
+    background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 20px; padding: 6px 16px; font-size: 0.85rem; font-weight: 600;
+    backdrop-filter: blur(6px);
+  }
+
+  /* Tabs */
+  .tabs { background: var(--primary); display: flex; gap: 0; overflow-x: auto; }
+  .tab-btn {
+    padding: 13px 22px; color: rgba(255,255,255,0.65); font-size: 0.88rem;
+    font-weight: 600; cursor: pointer; border: none; background: none;
+    transition: all .2s; border-bottom: 3px solid transparent; white-space: nowrap;
+    letter-spacing: .3px;
+  }
+  .tab-btn:hover { color: white; background: rgba(255,255,255,0.08); }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); background: rgba(255,255,255,0.06); }
+
+  /* Content */
+  .tab-content { display: none; padding: 28px 28px 40px; }
+  .tab-content.active { display: block; }
+
+  /* KPI Cards */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 18px; margin-bottom: 28px; }
+  .kpi-card {
+    background: var(--white); border-radius: var(--radius); padding: 22px 24px;
+    box-shadow: var(--shadow); border-left: 5px solid var(--secondary);
+    transition: transform .2s, box-shadow .2s; position: relative; overflow: hidden;
+  }
+  .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 30px rgba(26,58,92,0.18); }
+  .kpi-card .kpi-icon { font-size: 2.2rem; margin-bottom: 8px; }
+  .kpi-card .kpi-val { font-size: 2.4rem; font-weight: 800; color: var(--primary); line-height: 1; }
+  .kpi-card .kpi-label { font-size: 0.82rem; color: var(--gray); margin-top: 5px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+  .kpi-card .kpi-sub { font-size: 0.78rem; color: var(--gray); margin-top: 3px; }
+  .kpi-card.accent { border-left-color: var(--accent); }
+  .kpi-card.accent .kpi-val { color: var(--accent); }
+  .kpi-card.green { border-left-color: var(--accent2); }
+  .kpi-card.green .kpi-val { color: var(--accent2); }
+  .kpi-card.red { border-left-color: var(--danger); }
+  .kpi-card.red .kpi-val { color: var(--danger); }
+
+  /* Charts grid */
+  .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 22px; margin-bottom: 22px; }
+  .chart-card {
+    background: var(--white); border-radius: var(--radius); padding: 22px 24px;
+    box-shadow: var(--shadow);
+  }
+  .chart-card.full { grid-column: 1 / -1; }
+  .chart-title {
+    font-size: 1rem; font-weight: 700; color: var(--primary); margin-bottom: 16px;
+    padding-bottom: 10px; border-bottom: 2px solid var(--light);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .chart-title .ct-icon { font-size: 1.1rem; }
+  .chart-wrapper { position: relative; height: 260px; }
+  .chart-wrapper.tall { height: 320px; }
+  .chart-wrapper.xlarge { height: 400px; }
+
+  /* Table */
+  .table-controls {
+    display: flex; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; align-items: center;
+  }
+  .search-box {
+    flex: 1; min-width: 220px; padding: 10px 16px; border: 2px solid var(--border);
+    border-radius: 8px; font-size: 0.9rem; outline: none; transition: border-color .2s;
+    background: var(--white);
+  }
+  .search-box:focus { border-color: var(--secondary); }
+  .filter-select {
+    padding: 10px 14px; border: 2px solid var(--border); border-radius: 8px;
+    font-size: 0.87rem; outline: none; background: var(--white); cursor: pointer;
+    transition: border-color .2s;
+  }
+  .filter-select:focus { border-color: var(--secondary); }
+  .table-info { font-size: 0.83rem; color: var(--gray); margin-left: auto; font-weight: 600; }
+
+  .table-wrapper { overflow-x: auto; border-radius: 10px; box-shadow: var(--shadow); }
+  table { width: 100%; border-collapse: collapse; background: white; font-size: 0.84rem; }
+  thead th {
+    background: var(--primary); color: white; padding: 12px 14px; text-align: left;
+    font-weight: 700; font-size: 0.8rem; letter-spacing: .4px; position: sticky; top: 0;
+    white-space: nowrap; cursor: pointer; user-select: none;
+  }
+  thead th:hover { background: #1e5278; }
+  thead th .sort-icon { margin-left: 5px; opacity: .6; font-size: 0.75rem; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .15s; }
+  tbody tr:hover { background: #f0f7ff; }
+  tbody td { padding: 10px 14px; vertical-align: top; max-width: 200px; }
+  tbody td.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; }
+
+  /* Badges */
+  .badge {
+    display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.73rem;
+    font-weight: 700; letter-spacing: .3px;
+  }
+  .badge-elevada { background: #fde8e8; color: #c0392b; }
+  .badge-média { background: #fef3cd; color: #856404; }
+  .badge-reduzida { background: #e8f5e9; color: #27ae60; }
+  .badge-fid { background: #e3f0fb; color: #1a3a5c; }
+  .badge-fpe { background: #fdebd0; color: #784212; }
+  .badge-tecnica { background: #e8f5e9; color: #1b6e3e; }
+  .badge-digital { background: #e8eaf6; color: #303f9f; }
+  .badge-liderança { background: #fce4ec; color: #880e4f; }
+  .badge-seguros { background: #fff3e0; color: #e65100; }
+
+  /* Pagination */
+  .pagination { display: flex; gap: 6px; justify-content: center; margin-top: 16px; align-items: center; flex-wrap: wrap; }
+  .page-btn {
+    width: 34px; height: 34px; border: 2px solid var(--border); border-radius: 8px;
+    background: white; font-size: 0.83rem; cursor: pointer; transition: all .2s; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .page-btn:hover { border-color: var(--secondary); color: var(--secondary); }
+  .page-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+  .page-btn:disabled { opacity: .4; cursor: default; }
+
+  /* Progress bars */
+  .progress-list { display: flex; flex-direction: column; gap: 12px; }
+  .progress-item { display: flex; flex-direction: column; gap: 4px; }
+  .progress-label { display: flex; justify-content: space-between; font-size: 0.83rem; font-weight: 600; }
+  .progress-bar-bg { background: var(--light); border-radius: 6px; height: 10px; overflow: hidden; }
+  .progress-bar-fill { height: 10px; border-radius: 6px; transition: width 1s ease; }
+
+  /* Legend */
+  .legend-inline { display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.82rem; margin-top: 10px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+
+  /* Section title */
+  .section-title { font-size: 1.1rem; font-weight: 800; color: var(--primary); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+  /* Scrollable table container */
+  .table-scroll { max-height: 480px; overflow-y: auto; border-radius: 10px; }
+
+  /* Tooltip override */
+  .chartjs-tooltip { z-index: 9999 !important; }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .charts-grid { grid-template-columns: 1fr; }
+    .header { flex-direction: column; gap: 10px; text-align: center; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .tab-content { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>📚 LNF 2026 — Dashboard Estratégico de Formação</h1>
+    <p>Levantamento de Necessidades de Formação · Fidelidade Group · Análise Integrada AC</p>
+  </div>
+  <div class="header-badge">⚡ Exercício 2026</div>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="showTab('visao-geral')">🏠 Visão Geral</button>
+  <button class="tab-btn" onclick="showTab('escolas')">🎓 Escolas & Clusters</button>
+  <button class="tab-btn" onclick="showTab('direcoes')">🏢 Direções</button>
+  <button class="tab-btn" onclick="showTab('tipologia')">📋 Tipologia & Prioridade</button>
+  <button class="tab-btn" onclick="showTab('detalhe')">🔍 Consulta Detalhada</button>
+</div>
+
+<!-- ============================= TAB 1: VISÃO GERAL ============================= -->
+<div id="visao-geral" class="tab-content active">
+
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-icon">📝</div>
+      <div class="kpi-val">313</div>
+      <div class="kpi-label">Total de Registos</div>
+      <div class="kpi-sub">Necessidades identificadas</div>
+    </div>
+    <div class="kpi-card accent">
+      <div class="kpi-icon">👥</div>
+      <div class="kpi-val">145</div>
+      <div class="kpi-label">Colaboradores</div>
+      <div class="kpi-sub">Nomes únicos identificados</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-icon">🏢</div>
+      <div class="kpi-val">12</div>
+      <div class="kpi-label">Direções</div>
+      <div class="kpi-sub">Unidades organizacionais</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">📌</div>
+      <div class="kpi-val">37</div>
+      <div class="kpi-label">Clusters Temáticos</div>
+      <div class="kpi-sub">Áreas de formação</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-icon">🔴</div>
+      <div class="kpi-val">100</div>
+      <div class="kpi-label">Prioridade Elevada</div>
+      <div class="kpi-sub">32% do total de registos</div>
+    </div>
+    <div class="kpi-card accent">
+      <div class="kpi-icon">🏫</div>
+      <div class="kpi-val">4</div>
+      <div class="kpi-label">Escolas de Formação</div>
+      <div class="kpi-sub">Técnica · Digital · Liderança · Seguros</div>
+    </div>
+  </div>
+
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-title"><span class="ct-icon">🏫</span> Distribuição por Escola</div>
+      <div class="chart-wrapper"><canvas id="chartEscola"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title"><span class="ct-icon">🏗️</span> Registos por Empresa</div>
+      <div class="chart-wrapper"><canvas id="chartEmpresa"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title"><span class="ct-icon">⚡</span> Distribuição por Prioridade</div>
+      <div class="chart-wrapper"><canvas id="chartPrioridade"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title"><span class="ct-icon">📋</span> Tipologia de Formação</div>
+      <div class="chart-wrapper"><canvas id="chartTipologia"></canvas></div>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-title"><span class="ct-icon">🏢</span> Distribuição por Direção</div>
+    <div class="chart-wrapper tall"><canvas id="chartDirecoes"></canvas></div>
+  </div>
+
+</div>
+
+<!-- ============================= TAB 2: ESCOLAS & CLUSTERS ============================= -->
+<div id="escolas" class="tab-content">
+
+  <div class="kpi-grid">
+    <div class="kpi-card"><div class="kpi-icon">🔬</div><div class="kpi-val" style="color:#1b6e3e">149</div><div class="kpi-label">Escola Técnica</div><div class="kpi-sub">47,6% do total</div></div>
+    <div class="kpi-card"><div class="kpi-icon">💻</div><div class="kpi-val" style="color:#303f9f">86</div><div class="kpi-label">Escola Digital</div><div class="kpi-sub">27,5% do total</div></div>
+    <div class="kpi-card"><div class="kpi-icon">🎯</div><div class="kpi-val" style="color:#880e4f">44</div><div class="kpi-label">Escola de Liderança</div><div class="kpi-sub">14,1% do total</div></div>
+    <div class="kpi-card"><div class="kpi-icon">🛡️</div><div class="kpi-val" style="color:#e65100">34</div><div class="kpi-label">Escola de Seguros</div><div class="kpi-sub">10,9% do total</div></div>
+  </div>
+
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-title"><span class="ct-icon">🏫</span> Escolas por Prioridade</div>
+      <div class="chart-wrapper tall"><canvas id="chartEscolaPrioridade"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title"><span class="ct-icon">📋</span> Escolas por Tipologia</div>
+      <div class="chart-wrapper tall"><canvas id="chartEscolaTipologia"></canvas></div>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-title"><span class="ct-icon">📌</span> Top 15 Clusters Temáticos</div>
+    <div class="chart-wrapper xlarge"><canvas id="chartClusters"></canvas></div>
+  </div>
+
+  <div style="margin-top:22px">
+    <div class="section-title">📊 Peso dos Clusters por Volume</div>
+    <div class="chart-card">
+      <div class="progress-list" id="progressClusters"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ============================= TAB 3: DIREÇÕES ============================= -->
+<div id="direcoes" class="tab-content">
+
+  <div class="charts-grid">
+    <div class="chart-card full">
+      <div class="chart-title"><span class="ct-icon">🏢</span> Registos por Direção e Escola</div>
+      <div class="chart-wrapper xlarge"><canvas id="chartDirecaoEscola"></canvas></div>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-title"><span class="ct-icon">📊</span> Volume por Direção (Ranking)</div>
+    <div class="progress-list" id="progressDirecoes"></div>
+  </div>
+
+  <div style="margin-top:22px">
+    <div class="section-title">👔 Top 10 Funções com Mais Necessidades</div>
+    <div class="chart-card">
+      <div class="chart-wrapper tall"><canvas id="chartFuncoes"></canvas></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ============================= TAB 4: TIPOLOGIA & PRIORIDADE ============================= -->
+<div id="tipologia" class="tab-content">
+
+  <div class="kpi-grid">
+    <div class="kpi-card"><div class="kpi-icon">🌐</div><div class="kpi-val" style="color:#0d47a1">89</div><div class="kpi-label">Online/Virtual</div><div class="kpi-sub">28,4% do total</div></div>
+    <div class="kpi-card"><div class="kpi-icon">🏫</div><div class="kpi-val" style="color:#1b5e20">83</div><div class="kpi-label">Presencial</div><div class="kpi-sub">26,5% do total</div></div>
+    <div class="kpi-card accent"><div class="kpi-icon">🏆</div><div class="kpi-val">37</div><div class="kpi-label">Certificação</div><div class="kpi-sub">11,8% do total</div></div>
+    <div class="kpi-card"><div class="kpi-icon">💡</div><div class="kpi-val" style="color:#6a1b9a">27</div><div class="kpi-label">E-learning</div><div class="kpi-sub">8,6% do total</div></div>
+  </div>
+
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-title"><span class="ct-icon">🔴</span> Prioridade por Escola</div>
+      <div class="chart-wrapper tall"><canvas id="chartPrioridadeEscola2"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title"><span class="ct-icon">📋</span> Tipologia — Visão Detalhada</div>
+      <div class="chart-wrapper tall"><canvas id="chartTipologiaDetalhada"></canvas></div>
+    </div>
+  </div>
+
+  <div class="chart-card" style="margin-top:0">
+    <div class="chart-title"><span class="ct-icon">⚡</span> Prioridade por Direção</div>
+    <div class="chart-wrapper xlarge"><canvas id="chartPrioridadeDirecao"></canvas></div>
+  </div>
+
+</div>
+
+<!-- ============================= TAB 5: CONSULTA DETALHADA ============================= -->
+<div id="detalhe" class="tab-content">
+
+  <div class="table-controls">
+    <input type="text" class="search-box" id="tableSearch" placeholder="🔍  Pesquisar por nome, função, iniciativa, cluster..." oninput="filterTable()">
+    <select class="filter-select" id="filterEmpresa" onchange="filterTable()">
+      <option value="">Empresa (Todas)</option>
+      <option value="FID">FID</option>
+      <option value="FPE">FPE</option>
+    </select>
+    <select class="filter-select" id="filterDirecao" onchange="filterTable()">
+      <option value="">Direção (Todas)</option>
+      <option value="DGR">DGR</option><option value="DCO">DCO</option>
+      <option value="FPE">FPE</option><option value="DES">DES</option>
+      <option value="DSU">DSU</option><option value="DPS">DPS</option>
+      <option value="DJC">DJC</option><option value="DPR">DPR</option>
+      <option value="GCF">GCF</option><option value="DJN">DJN</option>
+      <option value="SDS">SDS</option><option value="IRO">IRO</option>
+    </select>
+    <select class="filter-select" id="filterEscola" onchange="filterTable()">
+      <option value="">Escola (Todas)</option>
+      <option value="Técnica">Técnica</option>
+      <option value="Digital">Digital</option>
+      <option value="Liderança">Liderança</option>
+      <option value="Seguros">Seguros</option>
+    </select>
+    <select class="filter-select" id="filterPrioridade" onchange="filterTable()">
+      <option value="">Prioridade (Todas)</option>
+      <option value="Elevada">🔴 Elevada</option>
+      <option value="Média">🟡 Média</option>
+      <option value="Reduzida">🟢 Reduzida</option>
+    </select>
+    <span class="table-info" id="tableInfo">313 registos</span>
+  </div>
+
+  <div class="table-scroll">
+    <div class="table-wrapper">
+      <table id="mainTable">
+        <thead>
+          <tr>
+            <th onclick="sortTable(0)">Empresa<span class="sort-icon">↕</span></th>
+            <th onclick="sortTable(1)">Direção<span class="sort-icon">↕</span></th>
+            <th onclick="sortTable(2)">Nome<span class="sort-icon">↕</span></th>
+            <th onclick="sortTable(3)">Função<span class="sort-icon">↕</span></th>
+            <th onclick="sortTable(4)">Escola<span class="sort-icon">↕</span></th>
+            <th onclick="sortTable(5)">Cluster<span class="sort-icon">↕</span></th>
+            <th onclick="sortTable(6)">Iniciativa<span class="sort-icon">↕</span></th>
+            <th onclick="sortTable(7)">Tipologia<span class="sort-icon">↕</span></th>
+            <th onclick="sortTable(8)">Prioridade<span class="sort-icon">↕</span></th>
+            <th>Comentários</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="pagination" id="pagination"></div>
+
+</div>
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+const DATA = {
+  escola: { 'Técnica': 149, 'Digital': 86, 'Liderança': 44, 'Seguros': 34 },
+  empresa: { 'FID': 260, 'FPE': 53 },
+  prioridade: { 'Elevada': 100, 'Média': 150, 'Reduzida': 23 },
+  tipologia: { 'Formação Online/Virtual': 89, 'Formação Presencial': 83, 'Certificação': 37, 'Formação E-learning': 27, 'Conferência/Evento': 7, 'externa': 1 },
+  direcoes: { 'DGR': 67, 'DCO': 62, 'FPE': 53, 'DES': 33, 'DSU': 22, 'DPS': 21, 'DJC': 19, 'DPR': 14, 'GCF': 11, 'DJN': 5, 'SDS': 3, 'IRO': 3 },
+  clusters: { 'Compliance & Legal': 42, 'Línguas - Inglês': 31, 'Sustentabilidade': 24, 'Inteligência Artificial': 23, 'Office 365': 16, 'Atuariado': 16, 'Análise de Dados': 14, 'Gestão de Risco': 13, 'Finanças & Contabilidade': 13, 'Soft Skills - Comunicação & Public Speaking': 12, 'Línguas - Espanhol': 11, 'Gestão de Projetos': 11, 'Procurement': 10, 'Soft Skills - Negociação & Problem Solving': 9, 'Cibersegurança': 8 },
+  funcoes: { 'Analista': 60, 'Técnico': 40, 'Manager': 38, 'Advogado': 19, 'Senior Analyst': 19, 'Assistente': 12, 'Director': 11, 'Actuário': 10, 'Controller': 8, 'Consultor': 7 },
+  escolaPrioridade: [
+    {Escola:'Digital', Prioridade_short:'Elevada', count:41},
+    {Escola:'Digital', Prioridade_short:'Média', count:39},
+    {Escola:'Digital', Prioridade_short:'Reduzida', count:6},
+    {Escola:'Liderança', Prioridade_short:'Elevada', count:15},
+    {Escola:'Liderança', Prioridade_short:'Média', count:24},
+    {Escola:'Liderança', Prioridade_short:'Reduzida', count:5},
+    {Escola:'Seguros', Prioridade_short:'Elevada', count:14},
+    {Escola:'Seguros', Prioridade_short:'Média', count:17},
+    {Escola:'Seguros', Prioridade_short:'Reduzida', count:3},
+    {Escola:'Técnica', Prioridade_short:'Elevada', count:30},
+    {Escola:'Técnica', Prioridade_short:'Média', count:70},
+    {Escola:'Técnica', Prioridade_short:'Reduzida', count:9}
+  ],
+  escolaTipologia: [
+    {Escola:'Digital', 'Tipologia de Formação*':'Certificação', count:12},
+    {Escola:'Digital', 'Tipologia de Formação*':'Formação E-learning', count:7},
+    {Escola:'Digital', 'Tipologia de Formação*':'Formação Online/Virtual', count:31},
+    {Escola:'Digital', 'Tipologia de Formação*':'Formação Presencial', count:33},
+    {Escola:'Digital', 'Tipologia de Formação*':'Conferência/Evento', count:3},
+    {Escola:'Liderança', 'Tipologia de Formação*':'Certificação', count:3},
+    {Escola:'Liderança', 'Tipologia de Formação*':'Formação Online/Virtual', count:20},
+    {Escola:'Liderança', 'Tipologia de Formação*':'Formação Presencial', count:18},
+    {Escola:'Liderança', 'Tipologia de Formação*':'Formação E-learning', count:3},
+    {Escola:'Seguros', 'Tipologia de Formação*':'Certificação', count:8},
+    {Escola:'Seguros', 'Tipologia de Formação*':'Formação Online/Virtual', count:10},
+    {Escola:'Seguros', 'Tipologia de Formação*':'Formação Presencial', count:12},
+    {Escola:'Seguros', 'Tipologia de Formação*':'Formação E-learning', count:4},
+    {Escola:'Técnica', 'Tipologia de Formação*':'Certificação', count:14},
+    {Escola:'Técnica', 'Tipologia de Formação*':'Formação E-learning', count:13},
+    {Escola:'Técnica', 'Tipologia de Formação*':'Formação Online/Virtual', count:28},
+    {Escola:'Técnica', 'Tipologia de Formação*':'Formação Presencial', count:20},
+    {Escola:'Técnica', 'Tipologia de Formação*':'Conferência/Evento', count:4}
+  ],
+  direcaoEscola: [
+    {DIREÇÃO:'DGR', Escola:'Técnica', count:31},{DIREÇÃO:'DGR', Escola:'Digital', count:21},{DIREÇÃO:'DGR', Escola:'Liderança', count:9},{DIREÇÃO:'DGR', Escola:'Seguros', count:6},
+    {DIREÇÃO:'DCO', Escola:'Técnica', count:22},{DIREÇÃO:'DCO', Escola:'Digital', count:20},{DIREÇÃO:'DCO', Escola:'Liderança', count:12},{DIREÇÃO:'DCO', Escola:'Seguros', count:8},
+    {DIREÇÃO:'FPE', Escola:'Técnica', count:28},{DIREÇÃO:'FPE', Escola:'Digital', count:14},{DIREÇÃO:'FPE', Escola:'Liderança', count:7},{DIREÇÃO:'FPE', Escola:'Seguros', count:4},
+    {DIREÇÃO:'DES', Escola:'Técnica', count:18},{DIREÇÃO:'DES', Escola:'Digital', count:9},{DIREÇÃO:'DES', Escola:'Liderança', count:4},{DIREÇÃO:'DES', Escola:'Seguros', count:2},
+    {DIREÇÃO:'DSU', Escola:'Técnica', count:14},{DIREÇÃO:'DSU', Escola:'Digital', count:5},{DIREÇÃO:'DSU', Escola:'Liderança', count:2},{DIREÇÃO:'DSU', Escola:'Seguros', count:1},
+    {DIREÇÃO:'DPS', Escola:'Técnica', count:12},{DIREÇÃO:'DPS', Escola:'Digital', count:6},{DIREÇÃO:'DPS', Escola:'Liderança', count:2},{DIREÇÃO:'DPS', Escola:'Seguros', count:1},
+    {DIREÇÃO:'DJC', Escola:'Técnica', count:10},{DIREÇÃO:'DJC', Escola:'Digital', count:5},{DIREÇÃO:'DJC', Escola:'Liderança', count:4},{DIREÇÃO:'DJC', Escola:'Seguros', count:0},
+    {DIREÇÃO:'DPR', Escola:'Técnica', count:8},{DIREÇÃO:'DPR', Escola:'Digital', count:4},{DIREÇÃO:'DPR', Escola:'Liderança', count:2},{DIREÇÃO:'DPR', Escola:'Seguros', count:0},
+    {DIREÇÃO:'GCF', Escola:'Técnica', count:5},{DIREÇÃO:'GCF', Escola:'Digital', count:3},{DIREÇÃO:'GCF', Escola:'Liderança', count:2},{DIREÇÃO:'GCF', Escola:'Seguros', count:1},
+    {DIREÇÃO:'DJN', Escola:'Técnica', count:1},{DIREÇÃO:'DJN', Escola:'Digital', count:2},{DIREÇÃO:'DJN', Escola:'Liderança', count:1},{DIREÇÃO:'DJN', Escola:'Seguros', count:1},
+    {DIREÇÃO:'SDS', Escola:'Técnica', count:2},{DIREÇÃO:'SDS', Escola:'Digital', count:1},{DIREÇÃO:'SDS', Escola:'Liderança', count:0},{DIREÇÃO:'SDS', Escola:'Seguros', count:0},
+    {DIREÇÃO:'IRO', Escola:'Técnica', count:2},{DIREÇÃO:'IRO', Escola:'Digital', count:1},{DIREÇÃO:'IRO', Escola:'Liderança', count:0},{DIREÇÃO:'IRO', Escola:'Seguros', count:0}
+  ],
+  prioridadeDirecao: {
+    'DGR': {Elevada:28, Média:33, Reduzida:6},
+    'DCO': {Elevada:25, Média:32, Reduzida:5},
+    'FPE': {Elevada:16, Média:31, Reduzida:6},
+    'DES': {Elevada:12, Média:19, Reduzida:2},
+    'DSU': {Elevada:8, Média:12, Reduzida:2},
+    'DPS': {Elevada:5, Média:14, Reduzida:2},
+    'DJC': {Elevada:3, Média:14, Reduzida:2},
+    'DPR': {Elevada:2, Média:10, Reduzida:2},
+    'GCF': {Elevada:1, Média:9, Reduzida:1},
+    'DJN': {Elevada:0, Média:4, Reduzida:1},
+    'SDS': {Elevada:0, Média:3, Reduzida:0},
+    'IRO': {Elevada:0, Média:3, Reduzida:0}
+  }
+};
+
+const TABLE_DATA = [{"Empresa":"FID","DIREÇÃO":"DJC","OE Total*":"Laboral//-//-","Nome*":"Patrícia Isabel Filipe Cabrita","Função":"Manager","Programa/Tema*":"Escola Técnica","Iniciativa":"Inglês","Escola":"Técnica","Cluster":"Línguas - Inglês","Tipologia de Formação*":"Formação Online/Virtual","Prioridade_short":"Média","Comentários":"Análise Abril e depois previsão de inicio de ciclo em Maio"},{"Empresa":"FID","DIREÇÃO":"DJC","OE Total*":"Laboral//-//-","Nome*":"Bárbara Fortunato Teixeira","Função":"Advogado","Programa/Tema*":"Escola Técnica","Iniciativa":"Inglês","Escola":"Técnica","Cluster":"Línguas - Inglês","Tipologia de Formação*":"Formação Online/Virtual","Prioridade_short":"Média","Comentários":"Análise Abril e depois previsão de inicio de ciclo em Maio"},{"Empresa":"FID","DIREÇÃO":"DJC","OE Total*":"Laboral//-//-","Nome*":"Sara Daniela Quintas Couto Rego","Função":"Advogado","Programa/Tema*":"Escola Técnica","Iniciativa":"Inglês","Escola":"Técnica","Cluster":"Línguas - Inglês","Tipologia de Formação*":"Formação Online/Virtual","Prioridade_short":"Média","Comentários":"Análise Abril e depois previsão de inicio de ciclo em Maio"},{"Empresa":"FID","DIREÇÃO":"DJC","OE Total*":"Laboral//-//-","Nome*":"Francisca Santos Machado","Função":"Advogado","Programa/Tema*":"Escola Técnica","Iniciativa":"Inglês","Escola":"Técnica","Cluster":"Línguas - Inglês","Tipologia de Formação*":"Formação Online/Virtual","Prioridade_short":"Média","Comentários":"Análise Abril e depois previsão de inicio de ciclo em Maio"},{"Empresa":"FID","DIREÇÃO":"DJC","OE Total*":"Laboral//-//-","Nome*":"Bárbara Fortunato Teixeira","Função":"Advogado","Programa/Tema*":"Escola Digital","Iniciativa":"Gestão de Projetos","Escola":"Digital","Cluster":"Gestão de Projetos","Tipologia de Formação*":"Formação Online/Virtual","Prioridade_short":"Média","Comentários":"DS: incluir em nova turma a decorrer em 2026"},{"Empresa":"FID","DIREÇÃO":"DJC","OE Total*":"Laboral//-//-","Nome*":"Bárbara Fortunato Teixeira","Função":"Advogado","Programa/Tema*":"Escola de Liderança ","Iniciativa":"Public Speaking","Escola":"Liderança","Cluster":"Soft Skills - Comunicação & Public Speaking","Tipologia de Formação*":"Formação Online/Virtual","Prioridade_short":"Média","Comentários":"JPP: SKILLS4ALL"},{"Empresa":"FID","DIREÇÃO":"DJC","OE Total*":"Laboral//-//-","Nome*":"Bárbara Fortunato Teixeira","Função":"Advogado","Programa/Tema*":"Escola de Liderança ","Iniciativa":"Negociação e Problem Solving","Escola":"Liderança","Cluster":"Soft Skills - Negociação & Problem Solving","Tipologia de Formação*":"Formação Online/Virtual","Prioridade_short":"Média","Comentários":"JPP: SKILLS4ALL"},{"Empresa":"FID","DIREÇÃO":"DJC","OE Total*":"Laboral//-//-","Nome*":"Bárbara Fortunato Teixeira","Função":"Advogado","Programa/Tema*":"Escola Digital","Iniciativa":"Design Thinking","Escola":"Digital","Cluster":"Design Thinking","Tipologia de Formação*":"Formação Online/Virtual","Prioridade_short":"Média","Comentários":"DS: incluir na turma de nível introdutório dinamizada pelo CFT"},{"Empresa":"FID","DIREÇÃO":"DJC","OE Total*":"Laboral//-//-","Nome*":"Sara Daniela Quintas Couto Rego","Função":"Advogado","Programa/Tema*":"Escola de Liderança ","Iniciativa":"Negociação e Problem Solving","Escola":"Liderança","Cluster":"Soft Skills - Negociação & Problem Solving","Tipologia de Formação*":"Formação Online/Virtual","Prioridade_short":"Média","Comentários":"JPP: SKILLS4ALL"},{"Empresa":"FID","DIREÇÃO":"DJC","OE Total*":"Contencioso Corporativo//-//-","Nome*":"Maria Luisa Caixinha Rafael","Função":"Manager","Programa/Tema*":"Escola Técnica","Iniciativa":"Inglês","Escola":"Técnica","Cluster":"Línguas - Inglês","Tipologia de Formação*":"Formação Online/Virtual","Prioridade_short":"Média","Comentários":"Análise Abril e depois previsão de inicio de ciclo em Maio"},{"Empresa":"FID","DIREÇÃO":"DJC","OE Total*":"Contencioso Corporativo//-//-","Nome*":"Raquel Andrade Giestas","Função":"Assistente","Programa/Tema*":"Escola Digital","Iniciativa":"Cibersegurança ","Escola":"Digital","Cluster":"Cibersegurança","Tipologia de Formação*":"Formação Online/Virtual","Prioridade_short":"Média","Comentários":"DS: no dia 02.03 partilhados cursos do Metacompliance. Ver email: \"Formação | Cibersegurança\""},{"Empresa":"FID","DIREÇÃO":"DJC","OE Total*":"Contratação, Plataformas e Internacional//-//-","Nome*":"Marta Nicolau Cancela de Amorim","Função":"Advogado","Programa/Tema*":"Escola Técnica","Iniciativa":"Inglês","Escola":"Técnica","Cluster":"Línguas - Inglês","Tipologia de Formação*":"Formação Online/Virtual","Prioridade_short":"Média","Comentários":"Análise Abril e depois previsão de inicio de ciclo em Maio"},{"Empresa":"FID","DIREÇÃO":"DJC","OE Total*":"Contratação, Plataformas e Internacional//-//-","Nome*":"Ana Isabel Sousa Miranda Mendes da Silva","Função":"Advogado","Programa/Tema*":"Escola Técnica","Iniciativa":"Espanhol","Escola":"Técnica","Cluster":"Línguas - Espanhol","Tipologia de Formação*":"Formação Online/Virtual","Prioridade_short":"Média","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DJC","OE Total*":"Contratação, Plataformas e Internacional//-//-","Nome*":"Joana Rodrigues Machado Lopes","Função":"Advogado","Programa/Tema*":"Escola Técnica","Iniciativa":"Espanhol","Escola":"Técnica","Cluster":"Línguas - Espanhol","Tipologia de Formação*":"Formação Online/Virtual","Prioridade_short":"Média","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DJC","OE Total*":"Contratação, Plataformas e Internacional//-//-","Nome*":"Raquel Andrade Giestas","Função":"Assistente","Programa/Tema*":"Escola Digital","Iniciativa":"Office 365","Escola":"Digital","Cluster":"Office 365","Tipologia de Formação*":"Formação E-learning","Prioridade_short":"Média","Comentários":"DS: ação síncrona sobre Teams (reuniões e chats)."},{"Empresa":"FID","DIREÇÃO":"SDS","OE Total*":"-//-//-","Nome*":"Henrique Dias Pacheco","Função":"Técnico","Programa/Tema*":"Escola Digital","Iniciativa":"Office 365","Escola":"Digital","Cluster":"Office 365","Tipologia de Formação*":"Formação E-learning","Prioridade_short":"Elevada","Comentários":"Sharepoint"},{"Empresa":"FID","DIREÇÃO":"SDS","OE Total*":"-//-//-","Nome*":"Henrique Dias Pacheco","Função":"Técnico","Programa/Tema*":"Escola Digital","Iniciativa":"Inteligência Artificial","Escola":"Digital","Cluster":"Inteligência Artificial","Tipologia de Formação*":"Formação Presencial","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"SDS","OE Total*":"-//-//-","Nome*":"Pedro Nuno Sousa Silvestre","Função":"Técnico","Programa/Tema*":"Escola Digital","Iniciativa":"Inteligência Artificial","Escola":"Digital","Cluster":"Inteligência Artificial","Tipologia de Formação*":"Formação Presencial","Prioridade_short":"Média","Comentários":"Será incluído em formação de IA que irá ocorrer ao longo de 2026"},{"Empresa":"FID","DIREÇÃO":"DPR","OE Total*":"Departamento de Procurement//-//-","Nome*":"Catarina Daniela Pimentel da Cunha","Função":"Manager","Programa/Tema*":"Escola Técnica","Iniciativa":"Inglês","Escola":"Técnica","Cluster":"Línguas - Inglês","Tipologia de Formação*":"Formação Online/Virtual","Prioridade_short":"Média","Comentários":"Análise Abril e depois previsão de inicio de ciclo em Maio"},{"Empresa":"FID","DIREÇÃO":"DPR","OE Total*":"Departamento de Procurement//-//-","Nome*":"Catarina Daniela Pimentel da Cunha","Função":"Manager","Programa/Tema*":"Escola Técnica","Iniciativa":"Procurement","Escola":"Técnica","Cluster":"Procurement","Tipologia de Formação*":"Certificação","Prioridade_short":"Elevada","Comentários":"CIPS - Chartered Institute of Procurement & Supply"},{"Empresa":"FID","DIREÇÃO":"DPR","OE Total*":"Departamento de Procurement//-//-","Nome*":"Catarina Daniela Pimentel da Cunha","Função":"Manager","Programa/Tema*":"Escola de Liderança ","Iniciativa":"Coaching / Mentoring","Escola":"Liderança","Cluster":"Coaching / Mentoring","Tipologia de Formação*":"Formação Online/Virtual","Prioridade_short":"Média","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DPR","OE Total*":"Departamento de Procurement//-//-","Nome*":"Filipa Henriques Nunes","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Procurement","Escola":"Técnica","Cluster":"Procurement","Tipologia de Formação*":"Certificação","Prioridade_short":"Elevada","Comentários":"CIPS"},{"Empresa":"FID","DIREÇÃO":"DPR","OE Total*":"Departamento de Procurement//-//-","Nome*":"Andreia Sofia Neves Rodrigues","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Procurement","Escola":"Técnica","Cluster":"Procurement","Tipologia de Formação*":"Certificação","Prioridade_short":"Elevada","Comentários":"CIPS"},{"Empresa":"FID","DIREÇÃO":"DPR","OE Total*":"Departamento de Procurement//-//-","Nome*":"Andreia Sofia Neves Rodrigues","Função":"Técnico","Programa/Tema*":"Escola Digital","Iniciativa":"Análise de Dados","Escola":"Digital","Cluster":"Análise de Dados","Tipologia de Formação*":"Formação Presencial","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DPR","OE Total*":"Departamento de Procurement//-//-","Nome*":"Ricardo Miguel Filipe Rodrigues","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Procurement","Escola":"Técnica","Cluster":"Procurement","Tipologia de Formação*":"Certificação","Prioridade_short":"Elevada","Comentários":"CIPS"},{"Empresa":"FID","DIREÇÃO":"DPR","OE Total*":"Departamento de Procurement//-//-","Nome*":"Marcelo Lemos","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Procurement","Escola":"Técnica","Cluster":"Procurement","Tipologia de Formação*":"Certificação","Prioridade_short":"Elevada","Comentários":"CIPS"},{"Empresa":"FID","DIREÇÃO":"DPR","OE Total*":"Departamento de Procurement//-//-","Nome*":"Marcelo Lemos","Função":"Técnico","Programa/Tema*":"Escola Digital","Iniciativa":"Análise de Dados","Escola":"Digital","Cluster":"Análise de Dados","Tipologia de Formação*":"Formação Presencial","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DPR","OE Total*":"Departamento de Procurement//-//-","Nome*":"Gonçalo Nuno Santos Fernandes","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Procurement","Escola":"Técnica","Cluster":"Procurement","Tipologia de Formação*":"Certificação","Prioridade_short":"Elevada","Comentários":"CIPS"},{"Empresa":"FID","DIREÇÃO":"DPR","OE Total*":"Departamento de Procurement//-//-","Nome*":"Gonçalo Nuno Santos Fernandes","Função":"Técnico","Programa/Tema*":"Escola Digital","Iniciativa":"Análise de Dados","Escola":"Digital","Cluster":"Análise de Dados","Tipologia de Formação*":"Formação Presencial","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DPR","OE Total*":"Departamento de Procurement//-//-","Nome*":"Beatriz Rodrigues Cunha","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Procurement","Escola":"Técnica","Cluster":"Procurement","Tipologia de Formação*":"Certificação","Prioridade_short":"Elevada","Comentários":"CIPS"},{"Empresa":"FID","DIREÇÃO":"DPR","OE Total*":"Departamento de Procurement//-//-","Nome*":"Beatriz Rodrigues Cunha","Função":"Técnico","Programa/Tema*":"Escola Digital","Iniciativa":"Análise de Dados","Escola":"Digital","Cluster":"Análise de Dados","Tipologia de Formação*":"Formação Presencial","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DPR","OE Total*":"Departamento de Procurement//-//-","Nome*":"Maria João Costa","Função":"Senior Analyst","Programa/Tema*":"Escola Técnica","Iniciativa":"Procurement","Escola":"Técnica","Cluster":"Procurement","Tipologia de Formação*":"Certificação","Prioridade_short":"Elevada","Comentários":"CIPS"},{"Empresa":"FID","DIREÇÃO":"DPR","OE Total*":"Departamento de Procurement//-//-","Nome*":"Maria João Costa","Função":"Senior Analyst","Programa/Tema*":"Escola Digital","Iniciativa":"Análise de Dados","Escola":"Digital","Cluster":"Análise de Dados","Tipologia de Formação*":"Formação Presencial","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Ana Catarina Ferreira Pires","Função":"Manager","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Certificação","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Ana Catarina Ferreira Pires","Função":"Manager","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Conferência/Evento","Prioridade_short":"Média","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Ana Catarina Ferreira Pires","Função":"Manager","Programa/Tema*":"Escola de Liderança ","Iniciativa":"Liderança","Escola":"Liderança","Cluster":"Soft Skills - Liderança","Tipologia de Formação*":"Formação Presencial","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Diana Catarina Guerreiro Afonso Coutinho","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Certificação","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Diana Catarina Guerreiro Afonso Coutinho","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Formação Presencial","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Diana Catarina Guerreiro Afonso Coutinho","Função":"Técnico","Programa/Tema*":"Escola Digital","Iniciativa":"Inteligência Artificial","Escola":"Digital","Cluster":"Inteligência Artificial","Tipologia de Formação*":"Formação Presencial","Prioridade_short":"Média","Comentários":"Será incluído em formação de IA que irá ocorrer ao longo de 2026"},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Diana Catarina Guerreiro Afonso Coutinho","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Conferência/Evento","Prioridade_short":"Média","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Marta Sofia Dias Abreu Ramos","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Certificação","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Marta Sofia Dias Abreu Ramos","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Formação Presencial","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Marta Sofia Dias Abreu Ramos","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Conferência/Evento","Prioridade_short":"Média","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Marta Sofia Dias Abreu Ramos","Função":"Técnico","Programa/Tema*":"Escola Digital","Iniciativa":"Inteligência Artificial","Escola":"Digital","Cluster":"Inteligência Artificial","Tipologia de Formação*":"Formação Presencial","Prioridade_short":"Média","Comentários":"Será incluído em formação de IA que irá ocorrer ao longo de 2026"},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Susana Isabel Rocha Leitão","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Certificação","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Susana Isabel Rocha Leitão","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Formação Presencial","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Susana Isabel Rocha Leitão","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Conferência/Evento","Prioridade_short":"Média","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Cátia Isabel Costa Guerreiro","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Certificação","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Cátia Isabel Costa Guerreiro","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Formação Presencial","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Cátia Isabel Costa Guerreiro","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Conferência/Evento","Prioridade_short":"Média","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Beatriz Isabel Jacinto Correia","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Certificação","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Beatriz Isabel Jacinto Correia","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Formação Presencial","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Beatriz Isabel Jacinto Correia","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Conferência/Evento","Prioridade_short":"Média","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Joana Sofia Araújo Esteves","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Certificação","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Joana Sofia Araújo Esteves","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Formação Presencial","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Joana Sofia Araújo Esteves","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Conferência/Evento","Prioridade_short":"Média","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Inês Filipa Rosário Bernardino","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Certificação","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Inês Filipa Rosário Bernardino","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Formação Presencial","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Inês Filipa Rosário Bernardino","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Conferência/Evento","Prioridade_short":"Média","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Lara Isabel Neves de Sousa","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Certificação","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Lara Isabel Neves de Sousa","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Formação Presencial","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Lara Isabel Neves de Sousa","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Conferência/Evento","Prioridade_short":"Média","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Teresa Maria Alves Pereira","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Certificação","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Teresa Maria Alves Pereira","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Formação Presencial","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Teresa Maria Alves Pereira","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Conferência/Evento","Prioridade_short":"Média","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Soraia Raquel Carvalho Pereira","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Certificação","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Soraia Raquel Carvalho Pereira","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Formação Presencial","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Soraia Raquel Carvalho Pereira","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Conferência/Evento","Prioridade_short":"Média","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Andreia Alexandra Pereira de Almeida","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Certificação","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Andreia Alexandra Pereira de Almeida","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Formação Presencial","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional de Suporte e Gestão dos Riscos de Negócio","Nome*":"Andreia Alexandra Pereira de Almeida","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Conferência/Evento","Prioridade_short":"Média","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional Gestão de Riscos de Proteção Dados Pessoais","Nome*":"Ana Marta Vilela Neto","Função":"Manager","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Certificação","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional Gestão de Riscos de Proteção Dados Pessoais","Nome*":"Ana Marta Vilela Neto","Função":"Manager","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Formação Presencial","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional Gestão de Riscos de Proteção Dados Pessoais","Nome*":"Ana Marta Vilela Neto","Função":"Manager","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Conferência/Evento","Prioridade_short":"Média","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional Gestão de Riscos de Proteção Dados Pessoais","Nome*":"Ana Marta Vilela Neto","Função":"Manager","Programa/Tema*":"Escola Digital","Iniciativa":"Inteligência Artificial","Escola":"Digital","Cluster":"Inteligência Artificial","Tipologia de Formação*":"Formação Presencial","Prioridade_short":"Média","Comentários":"Será incluído em formação de IA que irá ocorrer ao longo de 2026"},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional Gestão de Riscos de Proteção Dados Pessoais","Nome*":"Catarina Isabel Lima de Moura","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Certificação","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional Gestão de Riscos de Proteção Dados Pessoais","Nome*":"Catarina Isabel Lima de Moura","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Formação Presencial","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional Gestão de Riscos de Proteção Dados Pessoais","Nome*":"Catarina Isabel Lima de Moura","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Conferência/Evento","Prioridade_short":"Média","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional Gestão de Riscos de Proteção Dados Pessoais","Nome*":"Catarina Isabel Lima de Moura","Função":"Técnico","Programa/Tema*":"Escola Digital","Iniciativa":"Inteligência Artificial","Escola":"Digital","Cluster":"Inteligência Artificial","Tipologia de Formação*":"Formação Presencial","Prioridade_short":"Média","Comentários":"Será incluído em formação de IA que irá ocorrer ao longo de 2026"},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional Gestão de Riscos de Proteção Dados Pessoais","Nome*":"Sónia Filipa Caetano Carvalho","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Certificação","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional Gestão de Riscos de Proteção Dados Pessoais","Nome*":"Sónia Filipa Caetano Carvalho","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Formação Presencial","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional Gestão de Riscos de Proteção Dados Pessoais","Nome*":"Sónia Filipa Caetano Carvalho","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Conferência/Evento","Prioridade_short":"Média","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional Gestão de Riscos de Proteção Dados Pessoais","Nome*":"Sónia Filipa Caetano Carvalho","Função":"Técnico","Programa/Tema*":"Escola Digital","Iniciativa":"Inteligência Artificial","Escola":"Digital","Cluster":"Inteligência Artificial","Tipologia de Formação*":"Formação Presencial","Prioridade_short":"Média","Comentários":"Será incluído em formação de IA que irá ocorrer ao longo de 2026"},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional Gestão de Riscos de Proteção Dados Pessoais","Nome*":"Filipe José Martins Lopes","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Certificação","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional Gestão de Riscos de Proteção Dados Pessoais","Nome*":"Filipe José Martins Lopes","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Formação Presencial","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional Gestão de Riscos de Proteção Dados Pessoais","Nome*":"Filipe José Martins Lopes","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Conferência/Evento","Prioridade_short":"Média","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional Gestão de Riscos de Proteção Dados Pessoais","Nome*":"Filipe José Martins Lopes","Função":"Técnico","Programa/Tema*":"Escola Digital","Iniciativa":"Inteligência Artificial","Escola":"Digital","Cluster":"Inteligência Artificial","Tipologia de Formação*":"Formação Presencial","Prioridade_short":"Média","Comentários":"Será incluído em formação de IA que irá ocorrer ao longo de 2026"},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional Gestão de Riscos de Proteção Dados Pessoais","Nome*":"Paulo Alexandre dos Santos Ferreira","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Certificação","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional Gestão de Riscos de Proteção Dados Pessoais","Nome*":"Paulo Alexandre dos Santos Ferreira","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Formação Presencial","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional Gestão de Riscos de Proteção Dados Pessoais","Nome*":"Paulo Alexandre dos Santos Ferreira","Função":"Técnico","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Conferência/Evento","Prioridade_short":"Média","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional Gestão de Riscos de Proteção Dados Pessoais","Nome*":"Paulo Alexandre dos Santos Ferreira","Função":"Técnico","Programa/Tema*":"Escola Digital","Iniciativa":"Inteligência Artificial","Escola":"Digital","Cluster":"Inteligência Artificial","Tipologia de Formação*":"Formação Presencial","Prioridade_short":"Média","Comentários":"Será incluído em formação de IA que irá ocorrer ao longo de 2026"},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional Gestão de Riscos de Proteção Dados Pessoais","Nome*":"Maria Alexandra Antunes Mestre","Função":"Senior Analyst","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Certificação","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional Gestão de Riscos de Proteção Dados Pessoais","Nome*":"Maria Alexandra Antunes Mestre","Função":"Senior Analyst","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Formação Presencial","Prioridade_short":"Elevada","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional Gestão de Riscos de Proteção Dados Pessoais","Nome*":"Maria Alexandra Antunes Mestre","Função":"Senior Analyst","Programa/Tema*":"Escola Técnica","Iniciativa":"Compliance","Escola":"Técnica","Cluster":"Compliance & Legal","Tipologia de Formação*":"Conferência/Evento","Prioridade_short":"Média","Comentários":""},{"Empresa":"FID","DIREÇÃO":"DCO","OE Total*":"-//-//Área Funcional Gestão de Riscos de Proteção Dados Pessoais","Nome*":"Maria Alexandra Antunes Mestre","Função":"Senior Analyst","Programa/Tema*":"Escola Digital","Iniciativa":"Inteligência Artificial","Escola":"Digital","Cluster":"Inteligência Artificial","Tipologia de Formação*":"Formação Presencial","Prioridade_short":"Média","Comentários":"Será incluído em formação de IA que irá ocorrer ao longo de 2026"}];
+
+// Colors
+const COLORS = {
+  escola: { 'Técnica':'#27ae60', 'Digital':'#3949ab', 'Liderança':'#c0392b', 'Seguros':'#e65100' },
+  prioridade: { 'Elevada':'#e74c3c', 'Média':'#f39c12', 'Reduzida':'#27ae60' },
+  empresa: { 'FID':'#1a3a5c', 'FPE':'#e8a020' },
+  dir: ['#1a3a5c','#2e7d9f','#27ae60','#e8a020','#c0392b','#8e44ad','#2c3e50','#16a085','#f39c12','#d35400','#7f8c8d','#2980b9']
+};
+
+// ============================================================
+// CHARTS
+// ============================================================
+Chart.defaults.font.family = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+Chart.defaults.font.size = 12;
+
+function makeChart(id, config) {
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  return new Chart(ctx, config);
+}
+
+function initCharts() {
+  // Escola - Donut
+  makeChart('chartEscola', {
+    type: 'doughnut',
+    data: {
+      labels: Object.keys(DATA.escola),
+      datasets: [{ data: Object.values(DATA.escola), backgroundColor: Object.keys(DATA.escola).map(k => COLORS.escola[k]), borderWidth: 3, borderColor: '#fff', hoverOffset: 10 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { padding: 16, font: { size: 12 } } }, tooltip: { callbacks: { label: (c) => ` ${c.label}: ${c.parsed} (${((c.parsed/313)*100).toFixed(1)}%)` } } }, cutout: '60%' }
+  });
+
+  // Empresa - Bar
+  makeChart('chartEmpresa', {
+    type: 'bar',
+    data: {
+      labels: Object.keys(DATA.empresa),
+      datasets: [{ data: Object.values(DATA.empresa), backgroundColor: Object.keys(DATA.empresa).map(k => COLORS.empresa[k]), borderRadius: 8, borderSkipped: false }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${c.parsed.y} registos (${((c.parsed.y/313)*100).toFixed(1)}%)` } } }, scales: { y: { beginAtZero: true, grid: { color: '#f0f4f8' } }, x: { grid: { display: false } } } }
+  });
+
+  // Prioridade - Polar
+  makeChart('chartPrioridade', {
+    type: 'pie',
+    data: {
+      labels: Object.keys(DATA.prioridade),
+      datasets: [{ data: Object.values(DATA.prioridade), backgroundColor: ['#e74c3c','#f39c12','#27ae60'], borderWidth: 3, borderColor: '#fff', hoverOffset: 8 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { padding: 14 } }, tooltip: { callbacks: { label: (c) => ` ${c.label}: ${c.parsed} (${((c.parsed/273)*100).toFixed(1)}%)` } } } }
+  });
+
+  // Tipologia
+  makeChart('chartTipologia', {
+    type: 'doughnut',
+    data: {
+      labels: Object.keys(DATA.tipologia),
+      datasets: [{ data: Object.values(DATA.tipologia), backgroundColor: ['#1a3a5c','#2e7d9f','#e8a020','#27ae60','#8e44ad','#e74c3c'], borderWidth: 3, borderColor: '#fff', hoverOffset: 10 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { padding: 10, font: { size: 11 } } } }, cutout: '55%' }
+  });
+
+  // Direções - Horizontal Bar
+  makeChart('chartDirecoes', {
+    type: 'bar',
+    data: {
+      labels: Object.keys(DATA.direcoes),
+      datasets: [{ label: 'Registos', data: Object.values(DATA.direcoes), backgroundColor: Object.keys(DATA.direcoes).map((_,i) => COLORS.dir[i % COLORS.dir.length]), borderRadius: 6 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, grid: { color: '#f0f4f8' } }, y: { grid: { display: false } } } }
+  });
+
+  // Escola x Prioridade
+  const escolasPriori = ['Digital','Liderança','Seguros','Técnica'];
+  const prioridades = ['Elevada','Média','Reduzida'];
+  const priColors = ['#e74c3c','#f39c12','#27ae60'];
+  makeChart('chartEscolaPrioridade', {
+    type: 'bar',
+    data: {
+      labels: escolasPriori,
+      datasets: prioridades.map((p, i) => ({
+        label: p,
+        data: escolasPriori.map(e => { const f = DATA.escolaPrioridade.find(x => x.Escola === e && x.Prioridade_short === p); return f ? f.count : 0; }),
+        backgroundColor: priColors[i], borderRadius: 4
+      }))
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } }
+  });
+
+  // Escola x Tipologia
+  const tiposCores = ['#1a3a5c','#2e7d9f','#e8a020','#27ae60','#8e44ad'];
+  const tipologias = ['Certificação','Formação E-learning','Formação Online/Virtual','Formação Presencial','Conferência/Evento'];
+  makeChart('chartEscolaTipologia', {
+    type: 'bar',
+    data: {
+      labels: escolasPriori,
+      datasets: tipologias.map((t, i) => ({
+        label: t.replace('Formação ',''),
+        data: escolasPriori.map(e => { const f = DATA.escolaTipologia.find(x => x.Escola === e && x['Tipologia de Formação*'] === t); return f ? f.count : 0; }),
+        backgroundColor: tiposCores[i], borderRadius: 4
+      }))
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } }
+  });
+
+  // Clusters - Horizontal Bar
+  const clusterKeys = Object.keys(DATA.clusters);
+  const clusterVals = Object.values(DATA.clusters);
+  const clusterColors = clusterKeys.map((_, i) => `hsl(${200 + i * 12}, 60%, 45%)`);
+  makeChart('chartClusters', {
+    type: 'bar',
+    data: { labels: clusterKeys, datasets: [{ label: 'Registos', data: clusterVals, backgroundColor: clusterColors, borderRadius: 5 }] },
+    options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, grid: { color: '#f0f4f8' } }, y: { ticks: { font: { size: 11 } } } } }
+  });
+
+  // Progress Clusters
+  const pc = document.getElementById('progressClusters');
+  const maxC = Math.max(...Object.values(DATA.clusters));
+  Object.entries(DATA.clusters).slice(0, 12).forEach(([k, v]) => {
+    pc.innerHTML += `<div class="progress-item"><div class="progress-label"><span>${k}</span><span>${v}</span></div><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${(v/maxC*100).toFixed(1)}%;background:hsl(${200+Object.keys(DATA.clusters).indexOf(k)*12},60%,45%)"></div></div></div>`;
+  });
+
+  // Direção x Escola (Stacked)
+  const dirs = ['DGR','DCO','FPE','DES','DSU','DPS','DJC','DPR','GCF','DJN','SDS','IRO'];
+  const escolasDE = ['Técnica','Digital','Liderança','Seguros'];
+  makeChart('chartDirecaoEscola', {
+    type: 'bar',
+    data: {
+      labels: dirs,
+      datasets: escolasDE.map(e => ({
+        label: e,
+        data: dirs.map(d => { const f = DATA.direcaoEscola.find(x => x.DIREÇÃO === d && x.Escola === e); return f ? f.count : 0; }),
+        backgroundColor: COLORS.escola[e], borderRadius: 4
+      }))
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true } } }
+  });
+
+  // Progress Direções
+  const pd = document.getElementById('progressDirecoes');
+  const maxD = Math.max(...Object.values(DATA.direcoes));
+  Object.entries(DATA.direcoes).forEach(([k, v], i) => {
+    pd.innerHTML += `<div class="progress-item"><div class="progress-label"><span><strong>${k}</strong></span><span>${v} registos</span></div><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${(v/maxD*100).toFixed(1)}%;background:${COLORS.dir[i % COLORS.dir.length]}"></div></div></div>`;
+  });
+
+  // Funções
+  makeChart('chartFuncoes', {
+    type: 'bar',
+    data: {
+      labels: Object.keys(DATA.funcoes),
+      datasets: [{ data: Object.values(DATA.funcoes), backgroundColor: Object.keys(DATA.funcoes).map((_,i) => `hsl(${210+i*15},60%,45%)`), borderRadius: 6 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true }, y: { grid: { display: false } } } }
+  });
+
+  // Prioridade Escola - tab4
+  makeChart('chartPrioridadeEscola2', {
+    type: 'bar',
+    data: {
+      labels: escolasPriori,
+      datasets: prioridades.map((p, i) => ({
+        label: p,
+        data: escolasPriori.map(e => { const f = DATA.escolaPrioridade.find(x => x.Escola === e && x.Prioridade_short === p); return f ? f.count : 0; }),
+        backgroundColor: priColors[i], borderRadius: 4
+      }))
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { x: { stacked: false }, y: { beginAtZero: true } } }
+  });
+
+  // Tipologia Detalhada
+  makeChart('chartTipologiaDetalhada', {
+    type: 'bar',
+    data: {
+      labels: Object.keys(DATA.tipologia),
+      datasets: [{ data: Object.values(DATA.tipologia), backgroundColor: ['#1a3a5c','#27ae60','#e8a020','#8e44ad','#e74c3c','#7f8c8d'], borderRadius: 6 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true }, y: { grid: { display: false } } } }
+  });
+
+  // Prioridade por Direção (Grouped)
+  const pdDirs = Object.keys(DATA.prioridadeDirecao);
+  makeChart('chartPrioridadeDirecao', {
+    type: 'bar',
+    data: {
+      labels: pdDirs,
+      datasets: [
+        { label: 'Elevada', data: pdDirs.map(d => DATA.prioridadeDirecao[d].Elevada), backgroundColor: '#e74c3c', borderRadius: 4 },
+        { label: 'Média', data: pdDirs.map(d => DATA.prioridadeDirecao[d].Média), backgroundColor: '#f39c12', borderRadius: 4 },
+        { label: 'Reduzida', data: pdDirs.map(d => DATA.prioridadeDirecao[d].Reduzida), backgroundColor: '#27ae60', borderRadius: 4 }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true } } }
+  });
+}
+
+// ============================================================
+// TABLE
+// ============================================================
+let filteredData = [...TABLE_DATA];
+let currentPage = 1;
+const rowsPerPage = 15;
+let sortCol = -1, sortAsc = true;
+
+function getBadgeClass(val, type) {
+  if (type === 'prioridade') {
+    if (val === 'Elevada') return 'badge badge-elevada';
+    if (val === 'Média') return 'badge badge-média';
+    return 'badge badge-reduzida';
+  }
+  if (type === 'empresa') return val === 'FID' ? 'badge badge-fid' : 'badge badge-fpe';
+  if (type === 'escola') {
+    const m = {'Técnica':'badge-tecnica','Digital':'badge-digital','Liderança':'badge-liderança','Seguros':'badge-seguros'};
+    return 'badge ' + (m[val] || '');
+  }
+  return '';
+}
+
+function renderTable() {
+  const tbody = document.getElementById('tableBody');
+  const start = (currentPage - 1) * rowsPerPage;
+  const end = start + rowsPerPage;
+  const pageData = filteredData.slice(start, end);
+  tbody.innerHTML = pageData.map(r => `
+    <tr>
+      <td><span class="${getBadgeClass(r.Empresa, 'empresa')}">${r.Empresa}</span></td>
+      <td><strong>${r['DIREÇÃO']}</strong></td>
+      <td class="truncate" title="${r['Nome*']}">${r['Nome*']}</td>
+      <td class="truncate" title="${r['Função']}">${r['Função']}</td>
+      <td><span class="${getBadgeClass(r.Escola, 'escola')}">${r.Escola}</span></td>
+      <td class="truncate" title="${r.Cluster}">${r.Cluster}</td>
+      <td class="truncate" title="${r.Iniciativa}">${r.Iniciativa}</td>
+      <td class="truncate" title="${r['Tipologia de Formação*']}">${r['Tipologia de Formação*']}</td>
+      <td><span class="${getBadgeClass(r.Prioridade_short, 'prioridade')}">${r.Prioridade_short}</span></td>
+      <td class="truncate" title="${r.Comentários}">${r.Comentários || '—'}</td>
+    </tr>
+  `).join('');
+
+  document.getElementById('tableInfo').textContent = `${filteredData.length} registos (pág. ${currentPage}/${Math.ceil(filteredData.length/rowsPerPage)})`;
+  renderPagination();
+}
+
+function renderPagination() {
+  const total = Math.ceil(filteredData.length / rowsPerPage);
+  const pag = document.getElementById('pagination');
+  let html = `<button class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹</button>`;
+  let start = Math.max(1, currentPage - 2);
+  let end = Math.min(total, start + 4);
+  if (end - start < 4) start = Math.max(1, end - 4);
+  if (start > 1) html += `<button class="page-btn" onclick="goPage(1)">1</button>${start>2?'<span style="padding:0 4px">…</span>':''}`;
+  for (let i = start; i <= end; i++) html += `<button class="page-btn ${i===currentPage?'active':''}" onclick="goPage(${i})">${i}</button>`;
+  if (end < total) html += `${end<total-1?'<span style="padding:0 4px">…</span>':''}<button class="page-btn" onclick="goPage(${total})">${total}</button>`;
+  html += `<button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage===total?'disabled':''}>›</button>`;
+  pag.innerHTML = html;
+}
+
+function goPage(p) {
+  const total = Math.ceil(filteredData.length / rowsPerPage);
+  if (p < 1 || p > total) return;
+  currentPage = p;
+  renderTable();
+}
+
+function filterTable() {
+  const q = document.getElementById('tableSearch').value.toLowerCase();
+  const emp = document.getElementById('filterEmpresa').value;
+  const dir = document.getElementById('filterDirecao').value;
+  const esc = document.getElementById('filterEscola').value;
+  const pri = document.getElementById('filterPrioridade').value;
+  filteredData = TABLE_DATA.filter(r => {
+    const text = [r['Nome*'], r['Função'], r['Iniciativa'], r.Cluster, r['Programa/Tema*'], r.Comentários].join(' ').toLowerCase();
+    return (!q || text.includes(q))
+      && (!emp || r.Empresa === emp)
+      && (!dir || r['DIREÇÃO'] === dir)
+      && (!esc || r.Escola === esc)
+      && (!pri || r.Prioridade_short === pri);
+  });
+  currentPage = 1;
+  renderTable();
+}
+
+let sortDirs = {};
+function sortTable(col) {
+  sortDirs[col] = sortDirs[col] === 'asc' ? 'desc' : 'asc';
+  const dir = sortDirs[col] === 'asc' ? 1 : -1;
+  const keys = ['Empresa','DIREÇÃO','Nome*','Função','Escola','Cluster','Iniciativa','Tipologia de Formação*','Prioridade_short'];
+  const key = keys[col];
+  filteredData.sort((a, b) => (a[key] || '').localeCompare((b[key] || ''), 'pt') * dir);
+  currentPage = 1;
+  renderTable();
+}
+
+// ============================================================
+// TABS
+// ============================================================
+function showTab(id) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ============================================================
+// INIT
+// ============================================================
+window.onload = () => {
+  initCharts();
+  renderTable();
+};
+</script>
+</body>
+</html>
